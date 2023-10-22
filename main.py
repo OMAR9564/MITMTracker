@@ -31,7 +31,7 @@ def searchMacAddress(data):
 def findMacAddress(ipAddress, interfaceName):
     try:
         if platform.system() == "Darwin" or platform.system() == "Linux":
-            result = subprocess.check_output(["ifconfig"], universal_newlines=True)
+            result = subprocess.check_output(["ifconfig", interfaceName], universal_newlines=True)
             interfaces = re.findall(r"(\S+):", result)
 
             for interface in interfaces:
