@@ -33,8 +33,8 @@ To stop tracking the MAC address, simply press `Ctrl`+`C`.
 ## Notes
 
 * The script uses two different methods to track the MAC address of the interface:
-    * **Method 1:** Uses the `arp` command to find the MAC address of the default gateway.
-    * **Method 2:** Uses the `getmac` command to find the MAC address of the interface.
+    * **Method 1:** This method scans the local network using ARP requests to detect changes in MAC addresses. It may not be as fast but can work on various operating systems, including macOS and Linux.
+    * **Method 2:** This method is faster and efficient. It uses the 'getmac' library to fetch the MAC address directly from the device. It works well on Windows.
 
 Method 2 is faster than method 1
 
