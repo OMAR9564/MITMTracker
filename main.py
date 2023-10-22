@@ -6,21 +6,23 @@ import subprocess
 from colorama import Fore, Style
 import nmap
 import uuid
+import socket
+import netifaces
+from getmac import get_mac_address
 
 
 def get_gateway_ip():
     try:
-        output = subprocess.check_output(['netstat', '-s'], universal_newlines=True)
+        gateway_ip = None
+        gateways = netifaces.gateways()
+        if 'default' in gateways:
+            gateway_ip = gateways['default'][netifaces.AF_INET][0]
+        return gateway_ip
 
-        for line in output.split('\n'):
-            if 'default' in line:
-                router_ip = line.split()[1]
-                return router_ip
-
-        return None
     except Exception as e:
         print(f'Hata oluştu: {e}')
         return None
+
 
 def searchMacAddress(data):
     mac_address_search = re.search(r"(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)", data)
@@ -28,17 +30,25 @@ def searchMacAddress(data):
         return mac_address_search.group(0)
     return None
 
-def findMacAddress(ipAddress, interfaceName):
+
+def findMacAddress(interfaceName):
     try:
         if platform.system() == "Darwin" or platform.system() == "Linux":
-            result = subprocess.check_output(["ifconfig", interfaceName], universal_newlines=True)
-            interfaces = re.findall(r"(\S+):", result)
+            try:
+                default_gateway_ip = get_gateway_ip()
+                if default_gateway_ip:
+                    arp_result = subprocess.check_output(["arp", "-a"]).decode("utf-8")
+                    lines = arp_result.splitlines()
 
-            for interface in interfaces:
-                if interfaceName in interface:
-                    mac_address = searchMacAddress(result)
-                    if mac_address:
-                        return mac_address
+                    for line in lines:
+                        if default_gateway_ip in line:
+                            parts = line.split()
+                            mac_address = parts[3]
+                            return mac_address
+                return None
+            except subprocess.CalledProcessError:
+                return None
+
         elif platform.system() == "Windows":
             if interfaceName == " " or interfaceName is None:
                 mac_address = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
@@ -57,8 +67,13 @@ def findMacAddress(ipAddress, interfaceName):
         return None
 
 
+def getMacAddressAlternative(interface):
+    routerIp = get_gateway_ip()
+    macAddress = get_mac_address(interface, routerIp)
+    return macAddress
+
+
 orjinal_mac = input("Please enter the MAC address(00:11:22:33:44:55):\n")
-print(f"Mevcut Wi-Fi MAC adresi: {orjinal_mac}")
 changed = False
 interfaceName = None
 if platform.system() == "Darwin" or platform.system() == "Linux":
@@ -66,10 +81,19 @@ if platform.system() == "Darwin" or platform.system() == "Linux":
     if interfaceName == "":
         interfaceName = "wlan0"
 
+trackerType = None
+while trackerType != '1' and trackerType != '2':
+    trackerType = input("Please select a method of tracker\n1.Scan with arp\n2.Scan with get-mac lab.\n")
+
+print(f"\n\nMevcut Wi-Fi MAC adresi: {orjinal_mac}")
+
 while True:
     try:
-        gateway_ip = get_gateway_ip()
-        current_mac = findMacAddress(gateway_ip, interfaceName)
+        current_mac = None
+        if trackerType == '1':
+            current_mac = findMacAddress(interfaceName)
+        elif trackerType == '2':
+            current_mac = getMacAddressAlternative(interfaceName)
 
         if current_mac != orjinal_mac:
             if current_mac is not None:
